@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Code Makes a Game | Lectures to No One</title>
+  <meta name="description" content="What happens when you give an AI three prompts and ask it to build a game. One year later, the bar has moved." />
+  <style>
+    :root {
+      --bg: #070b2a;
+      --bg-2: #14003a;
+      --panel: rgba(19, 7, 54, 0.88);
+      --panel-2: rgba(6, 14, 70, 0.9);
+      --text: #f7f3ff;
+      --muted: #c6c0ef;
+      --accent: #00f6ff;
+      --accent-2: #ff4fd8;
+      --accent-3: #fff36b;
+      --shadow: 0 0 0 3px rgba(255,255,255,0.08), 0 0 24px rgba(0,0,0,0.45);
+      --max: 860px;
+      --mono: "Courier New", Courier, monospace;
+      --sans: Verdana, Arial, sans-serif;
+      --serif: Georgia, "Times New Roman", serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background:
+        radial-gradient(circle at top left, rgba(255,79,216,0.18), transparent 24%),
+        radial-gradient(circle at top right, rgba(0,246,255,0.18), transparent 26%),
+        linear-gradient(180deg, var(--bg), var(--bg-2));
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: var(--sans);
+      background:
+        linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 50%,
+          rgba(255,255,255,0.03) 50%, rgba(255,255,255,0.03) 75%, transparent 75%, transparent),
+        linear-gradient(180deg, rgba(7,11,42,0.95), rgba(20,0,58,1));
+      background-size: 20px 20px, auto;
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 2px; }
+    a:hover { color: var(--accent-3); background: rgba(255,255,255,0.08); }
+
+    /* NAV */
+    .nav {
+      position: relative;
+      z-index: 20;
+      background: linear-gradient(180deg, #200054, #0f154f);
+      border-bottom: 3px ridge rgba(255,255,255,0.35);
+      box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+    }
+    .nav-inner {
+      width: min(calc(100% - 24px), var(--max));
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--accent-3);
+      font-family: var(--mono);
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-shadow: 2px 2px 0 #000;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    .brand-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      background: var(--accent-2);
+      box-shadow: 0 0 12px var(--accent-2);
+      animation: blink 1s steps(2, start) infinite;
+    }
+    .nav-links {
+      display: flex;
+      gap: 14px;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+    }
+    .nav-links a {
+      color: white;
+      background: linear-gradient(180deg, #284eff, #0f2d8a);
+      border: 2px outset rgba(255,255,255,0.35);
+      padding: 6px 12px;
+      text-decoration: none;
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.25);
+      white-space: nowrap;
+    }
+    .nav-links a:hover { color: var(--accent-3); background: linear-gradient(180deg, #4365ff, #183eb3); }
+
+    /* SHELL */
+    .shell {
+      width: min(calc(100% - 24px), var(--max));
+      margin: 0 auto;
+      padding: 24px 0 56px;
+    }
+
+    /* PANEL */
+    .panel {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 3px ridge rgba(255,255,255,0.28);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+    .panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 100% 4px;
+      opacity: 0.35;
+    }
+    .window-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-bottom: 3px ridge rgba(255,255,255,0.26);
+      background: linear-gradient(90deg, #ff4fd8, #5733ff, #00f6ff);
+      font-family: var(--mono);
+      color: white;
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-shadow: 1px 1px 0 #000;
+      position: relative;
+      z-index: 1;
+    }
+    .lights { display: inline-flex; gap: 6px; }
+    .light {
+      width: 12px; height: 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.35);
+    }
+    .light:nth-child(1) { background: #ff4d5e; }
+    .light:nth-child(2) { background: #ffe44d; }
+    .light:nth-child(3) { background: #00ff85; }
+
+    /* ARTICLE */
+    .article-header-body {
+      padding: 28px 28px 22px;
+      position: relative;
+      z-index: 1;
+    }
+    .eyebrow {
+      display: inline-block;
+      color: #120021;
+      background: var(--accent-3);
+      border: 2px outset rgba(255,255,255,0.35);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding: 4px 8px;
+      font-weight: bold;
+    }
+    h1.article-title {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      line-height: 1;
+      margin: 0 0 16px;
+      color: white;
+      text-shadow: 3px 3px 0 #000, 0 0 10px rgba(255,255,255,0.18);
+    }
+    .article-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .article-meta span {
+      padding: 4px 8px;
+      border: 1px dotted rgba(255,255,255,0.22);
+      background: rgba(0,0,0,0.18);
+    }
+    .article-meta span strong { color: var(--accent-3); margin-right: 4px; }
+
+    .article-body {
+      padding: 28px 32px 36px;
+      font-size: 1.05rem;
+      line-height: 1.85;
+      position: relative;
+      z-index: 1;
+      border-top: 2px dotted rgba(255,255,255,0.1);
+    }
+    .article-body p { margin: 0 0 1.4em; color: var(--text); }
+    .article-body ul {
+      color: var(--text);
+      line-height: 1.8;
+      margin: 0 0 1.4em;
+      padding-left: 1.4em;
+    }
+    .article-body li { margin-bottom: 0.3em; }
+
+    /* SECTION LABELS */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 36px 0 14px;
+    }
+    .section-label .tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #120021;
+      background: var(--accent-2);
+      border: 2px outset rgba(255,255,255,0.3);
+      padding: 4px 8px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    .section-label::after {
+      content: "";
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-2), transparent);
+      opacity: 0.4;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-family: var(--serif);
+      font-size: clamp(1.35rem, 3vw, 1.9rem);
+      color: var(--accent-3);
+      text-shadow: 2px 2px 0 #000;
+      line-height: 1.15;
+    }
+
+    /* PROMPT CARDS */
+    .prompt-sequence {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 20px 0 28px;
+    }
+    .prompt-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(0,0,0,0.45);
+      border: 2px solid rgba(0,246,255,0.25);
+      border-left: 4px solid var(--accent);
+      padding: 13px 18px;
+      font-family: var(--mono);
+    }
+    .prompt-num {
+      font-size: 0.68rem;
+      color: rgba(0,246,255,0.5);
+      font-weight: bold;
+      white-space: nowrap;
+      letter-spacing: 0.08em;
+    }
+    .prompt-text {
+      color: var(--accent);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .prompt-text::before { content: "> "; color: rgba(0,246,255,0.4); }
+
+    /* CALLOUT */
+    .callout {
+      border: 2px dotted rgba(255,79,216,0.45);
+      border-left: 4px solid var(--accent-2);
+      background: rgba(255,79,216,0.06);
+      padding: 16px 20px;
+      margin: 24px 0 28px;
+    }
+    .callout-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-2);
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .callout p { margin: 0; font-style: italic; line-height: 1.75; }
+
+    /* CODE BLOCKS */
+    .code-block {
+      margin: 18px 0 28px;
+      border: 3px ridge rgba(255,255,255,0.2);
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+    .code-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 12px;
+      background: #16163a;
+      border-bottom: 2px solid rgba(255,255,255,0.08);
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      color: #888;
+    }
+    .code-bar .filename { margin-left: auto; color: #aaa; }
+    pre.code {
+      margin: 0;
+      padding: 18px 20px;
+      background: #060606;
+      color: #7cff7c;
+      font-family: var(--mono);
+      font-size: 0.86rem;
+      line-height: 1.65;
+      overflow-x: auto;
+      tab-size: 2;
+    }
+    pre.code .kw  { color: #ff9d00; }
+    pre.code .cm  { color: #4a4a6a; font-style: italic; }
+    pre.code .num { color: #aef359; }
+    pre.code .str { color: #7ec8e3; }
+    pre.code .fn  { color: #61dafb; }
+
+    /* INTERACTIVE DEMO */
+    .demo-body {
+      padding: 20px 24px 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .slider-row {
+      display: grid;
+      grid-template-columns: 72px 1fr 48px;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-family: var(--mono);
+    }
+    .slider-row label {
+      color: var(--accent-3);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .slider-row input[type=range] { width: 100%; accent-color: var(--accent); cursor: crosshair; }
+    .slider-row .val { color: var(--accent); text-align: right; font-size: 0.85rem; }
+    .tier-bars { margin-top: 20px; display: flex; flex-direction: column; gap: 9px; }
+    .tier-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 56px;
+      gap: 10px;
+      align-items: center;
+      font-family: var(--mono);
+    }
+    .tier-name { font-size: 0.75rem; color: var(--muted); line-height: 1.3; }
+    .tier-bar-track {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      height: 16px;
+      overflow: hidden;
+    }
+    .tier-bar-fill { height: 100%; transition: width 140ms ease; }
+    .tier-pct { font-size: 0.8rem; text-align: right; }
+
+    /* STATUS GRID */
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 14px 0 28px;
+    }
+    .status-col h3 {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 0 0 10px;
+      padding: 5px 10px;
+    }
+    .status-col.done h3 { color: #00ff85; background: rgba(0,255,133,0.07); border-left: 3px solid #00ff85; }
+    .status-col.wip  h3 { color: var(--accent-3); background: rgba(255,243,107,0.07); border-left: 3px solid var(--accent-3); }
+    .status-col ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 5px; }
+    .status-col li {
+      font-size: 0.86rem;
+      line-height: 1.5;
+      color: var(--muted);
+      padding: 6px 8px;
+      border: 1px dotted rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.02);
+    }
+    .status-col.done li::before { content: "✓  "; color: #00ff85; }
+    .status-col.wip  li::before { content: "·  "; color: var(--accent-3); }
+
+    /* TAKEAWAYS */
+    .takeaway-list { display: flex; flex-direction: column; gap: 12px; margin: 14px 0 28px; }
+    .takeaway {
+      border: 2px dotted rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.02);
+      padding: 14px 16px;
+    }
+    .takeaway h3 {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-3);
+      margin: 0 0 6px;
+    }
+    .takeaway p { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.75; }
+
+    /* FOOTER */
+    footer.site-footer {
+      padding: 28px 0 42px;
+      color: var(--accent-3);
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0.4; }
+    }
+
+    /* HANDOFF SIDE-BY-SIDE */
+    .handoff-grid {
+      display: grid;
+      grid-template-columns: 1fr 200px;
+      gap: 20px;
+      align-items: start;
+      margin: 0 0 28px;
+    }
+    .handoff-text { min-width: 0; }
+    .unicorn-panel {
+      box-shadow:
+        0 0 0 3px rgba(255, 79, 216, 0.45),
+        0 0 28px rgba(255, 79, 216, 0.3),
+        0 0 0 6px rgba(0,0,0,0.4);
+    }
+
+    @media (max-width: 680px) {
+      .nav-inner { flex-direction: column; align-items: flex-start; }
+      .article-body { padding: 20px 18px 28px; }
+      .article-header-body { padding: 20px 18px 16px; }
+      .status-grid { grid-template-columns: 1fr; }
+      .tier-row { grid-template-columns: 100px 1fr 44px; }
+      .handoff-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="../index.html" aria-label="Lectures to No One home">
+        <span class="brand-dot"></span>
+        <span>Lectures to No One</span>
+      </a>
+      <div class="nav-links">
+        <a href="../index.html">&#8592; Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="shell">
+
+    <div class="panel">
+      <div class="window-bar">
+        <div class="lights"><span class="light"></span><span class="light"></span><span class="light"></span></div>
+        <span>Transmission / field notes / game dev</span>
+      </div>
+      <div class="article-header-body">
+        <div class="eyebrow">AI Development &middot; Game Dev &middot; Field Notes</div>
+        <h1 class="article-title">Claude Code Makes a Game</h1>
+        <div class="article-meta">
+          <span><strong>Date:</strong> March 2026</span>
+          <span><strong>Read:</strong> ~8 min</span>
+          <span><strong>Tags:</strong> Claude Code, SpacetimeDB, game dev</span>
+        </div>
+      </div>
+
+      <div class="article-body">
+
+        <p>One of my favorite ways to size up a coding agent isn't running evals or reading benchmarks. It's asking it to build a game. This is because it is easy to see when it fails, meets or exceeds expectations.</p>
+
+        <p>Games are a useful test too because they force integration. A render loop, game state, input handling, enemy logic, and a UI that ties it together 
+          — all running as one coherent system. An agent that ships a working game has demonstrated something that a benchmark score can't: the ability to hold a design in mind and execute it across subsystems simultaneously.
+        </p>
+
+        <!-- 01 -->
+        <div class="section-label"><span class="tag">01</span></div>
+        <h2>Last Year: Dozens of Prompts, One Space Shooter</h2>
+
+        <p>
+          In 2024 I had Gemini build a space shooter. It took around a dozen prompts and some specific technical direction.          
+          The result was genuinely good it was able to produce a visually dynamic game with working mechanics and a ship that felt fun to fly.
+
+          Now outside of the technical aspect if I just say how long I played the game for it was roughly a couple of minutes. 
+        </p>
+
+        <p>You can <a href="https://tcondello.github.io/Neon-Space-Shooter/index.html" target="_blank" rel="noreferrer">play it here</a></p>
+
+        <!-- 02 -->
+        <div class="section-label"><span class="tag">02</span></div>
+        <h2>This Year: Three Prompts to Claude in the browser...</h2>
+
+        <p>This year I wanted to see what had changed. So I began with some context questions</p>
+
+        <div class="prompt-sequence">
+          <div class="prompt-card">
+            <span class="prompt-num">01</span>
+            <span class="prompt-text">You know the game Asheron's Call</span>
+          </div>
+          <div class="prompt-card">
+            <span class="prompt-num">02</span>
+            <span class="prompt-text">Do you know the game Vampire Survivors</span>
+          </div>
+          <div class="prompt-card">
+            <span class="prompt-num">03</span>
+            <span class="prompt-text">smash the 2 together but keep the fantasy and ancient aesthetics</span>
+          </div>
+        </div>
+
+        <p>
+          Just for fun I threw out the "smash the 2 together but keep the fantasy and ancient aesthetics."" To my surprise its reply was a working prototype of a game that combined the best of both worlds. So I thought well how far can I push it until the wheels fall off?
+          Loot pools, enemy types, character building, Claude didnt even break a sweat. 
+        </p>
+
+        <p>You can play this years game <a href="https://tcondello.github.io/dereth-survivors/dereth-survivors.html" target="_blank" rel="noreferrer">here</a></p>
+
+        So then I thought what else could I do? 
+
+        <div class="section-label"><span class="tag">03</span></div>
+          <h2>Enter Claude Code</h2>
+
+          <p>I gave Claude Code two things: the game HTML file and the integration guide markdown. All produced by Claude in the browser. 
+            Then I wanted to test out this new database I heard about for game dev called <a href="https://spacetimedb.com/home" target="_blank" rel="noreferrer">SpacetimeDB</a>.            
+          </p>
+
+          <p>Claude Code then built a SpacetimeDB server module in TypeScript, 
+            wired up multiplayer using the SpacetimeDB browser WebSocket SDK, 
+            added server-authoritative combat, damage, health, and death all resolved server-side and gave each player persistent state across sessions.
+          </p>
+
+          <p>The handoff worked because I was able to develop an MVP with claude to get the game mechanics working. Then I build an MVP with claude code and asked it to smash them together. </p>
+
+        
+          <div class="section-label"><span class="tag">03</span></div>
+        <h2>The Hand-off Document Pattern</h2>
+
+        <div class="handoff-grid">
+          <div class="handoff-text">
+            <p>Before ending a long session I would have Claude write a markdown file for how it would integrate the elements of the app it just built into a game.</p>
+            <p>Many times I would ask it to write a plan then ask me 3 questions to seek clarity of the plan and then give me the priority before I would let it go off and start building. This pattern worked well and also lead to very long runs.
+              For example I had Claude Code "thinking" for over 25 minutes multiple times. 
+            </p>
+        </div>
+        </div>
+
+        <!-- 06 -->
+        <div class="section-label"><span class="tag">06</span></div>
+        <h2>The Pixel Art Pipeline</h2>
+
+        <p>
+          Claude did a good job of building basic visuals but I wanted to see what it could do. I have tried in the past to make my own pixel art generators by hand from tutorials and using AI. I knew it wasnt easy, I was stunned at how Claude performed.          
+          I expected the basic templates but the animations thats what blew me away. 
+          It was so good I started to make the rarity system operate like a game pallet upgrade. From Gameboy to SNES to N64. Even this curveball it handled well. 
+        </p>
+
+        <p><strong style="color: var(--accent-3);">Pixel Gear Forge</strong> &mdash; generates procedural equipment sprites. No only did the armor look different it even coded different pixel attack animaton for each weapon type
+          Five rarity tiers, each at a different grid resolution: 10&times;10 for Game Boy (Common) up to 20&times;20 for N64 (Legendary).</p>
+
+        <p><strong style="color: var(--accent-3);">Creature Lab</strong> &mdash; enemy sprite editor with palette variants for different enemy types and threat levels. 
+          With out asking it included damage and death animations. My daugher even enjoyed having it make Pink Unicorns that shot horns and left piles of glitter poops behind.
+        </p>
+
+        <p><strong style="color: var(--accent-3);">Boss Lab</strong> &mdash; larger-canvas boss designer it developed a unique animation for when the boss was enraged. 
+          For the hydra boss it had each head get its own dealth animation but also coded what it would look like if they grew back!
+        </p>
+
+
+        <!-- 08 -->
+        <div class="section-label"><span class="tag">08</span></div>
+        <h2>Takeaways</h2>
+
+        <div class="takeaway-list">
+          <div class="takeaway">
+            <h3>Capability moves fast</h3>
+            <p>What took ~12 prompts and real steering in 2024 took 3 context-free prompts in 2025. That's not a rounding error — the bar moved. If you haven't stress-tested a model at something genuinely hard recently, your intuition about what they can do is probably stale.</p>
+          </div>
+          <div class="takeaway">
+            <h3>The limiting factor has shifted</h3>
+            <p>It's no longer "can the agent build this." It's knowing what to ask for, having the taste to recognize when something is working, and knowing when to stop adding systems before the complexity collapses on itself.</p>
+          </div>
+          <div class="takeaway">
+            <h3>The hand-off document is underrated</h3>
+            <p>Not just for AI context switches — for any handoff. A model narrating its own work is cheap to generate and often more precise than documentation written retrospectively by a human. It knows every decision it made.</p>
+          </div>
+          <div class="takeaway">
+            <h3>Tool specialization matters</h3>
+            <p>Claude in the browser is fast for single-file iteration — you see the result immediately and steer in real time. Claude Code handles multi-file projects and deployable artifacts better. Used in sequence with a clean handoff document, they complement each other in ways that neither covers alone.</p>
+          </div>
+        </div>
+
+      </div><!-- /article-body -->
+    </div><!-- /panel -->
+
+  </div><!-- /shell -->
+
+  <footer class="site-footer">
+    <div>Lectures to No One &middot; tcondello.github.io &middot; signal in the noise</div>
+  </footer>
+
+</body>
+</html>
